@@ -1,16 +1,30 @@
-import React, {useState} from 'react';
-import { View, Text, Button } from 'react-native'
+import React, {useState, useEffect} from 'react';
+import { View, Text, Button, TouchableOpacity } from 'react-native';
+import { Camera } from 'expo-camera';
 
 const CamAppRouter = (props) => {
     const { styles } = props
 
-    const [test, setTest] = useState(true)
+    const [hasPermission, setHasPermission] = useState(null)
+    const [type, setType] = useState(Camera.Constants.Type.back);
+
+    useEffect(() => {
+        (async () => {
+            const { status } = await Camera.requestCameraPermissionsAsync();
+            setHasPermission(status === 'granted')
+        }) ()
+    }, [])
+
+    if(hasPermission === null){
+        return <View />
+    }
+
+    if (hasPermission === false) {
+        return <Text>No camera access</Text>
+    }
 
     return (
-        <View style={styles.container}>
-            <Text>Open Camera</Text>
-            <Button onPress={()=>{setTest(!test)}} title= { test ? "Click me!" : "YOU DID IT!"} />
-        </View>
+        null
     )
 }
 

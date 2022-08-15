@@ -1,59 +1,140 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
-import React, {useState} from 'react';
-import { Camera } from 'expo-camera';
+import React, {useEffect, useRef, useState} from 'react';
+import { Camera, CameraType } from 'expo-camera';
 import { Alert } from 'react-native-web';
+import * as FileSystem from 'expo-file-system';
+import { getInfoAsync, makeDirectoryAsync } from 'expo-file-system';
+import { AntDesign, MaterialIcons } from '@expo/vector-icons';
 // import CamAppRouter from './CamAppRouter';
 
-let camera;
+// let camera;
 
 export default function App() {
-  const [startCamera, setStartCamera] = useState(false)
+  const [hasPermission, setHasPermission] = useState(false)
+  const [photo, setPhoto] = useState();
+  const [cameraType, setCameraType] = useState(CameraType.back)
+  const [isPreview, setIsPreview] = useState(false)
+  const [isCameraReady, setIsCameraReady] = useState(false)
+
+  const cameraRef = useRef();
+
+  useEffect(() => {
+    onHandlePermission()
+  }, [])
+
+  const onHandlePermission = async () => {
+    const { status } = await Camera.requestCameraPermissionsAsync();
+    setHasPermission(status === 'granted');
+  }
+
+  const onCameraReady = () => {
+    setIsCameraReady(true)
+  }
+
+  const switchCamera = () => {
+    if(isPreview)return;
+    setCameraType(cameraType === CameraType.back ? CameraType.front : CameraType.back)
+  }
+
+  const cancelPreview = async () => {
+    await cameraRef.current.resumePreview();
+    setIsPreview(false)
+  }
 
   const __startCamera = async() => {
     const { status } = await Camera.requestCameraPermissionsAsync();
     if(status === 'granted') {
-      setStartCamera(true)
+      setHasPermission(true)
     } else {
       Alert.alert('access denied')
     }
   }
 
-  const __takePicture = async() => {
-    const photo = await camera.takePictureAsync()
-    console.log(photo)
+  const checkDirectoryExists = async (directory) => {
+    const directoryInfo = await getInfoAsync(directory);
+    if(!directoryInfo){
+      await makeDirectoryAsync(directory, { intermediates: true})
+    }
   }
+
+  const persistCachedFile = async( cachedFile, permanentFolder, fileId) => {
+    const permanentDirectoryPath = `${ FileSystem.documentDirectory }${ permanentFolder }/`
+    const uniqueFilePath = `${ permanentDirectoryPath }${ fileId }-${ Date.now() }`;
+
+    await checkDirectoryExists( permanentDirectoryPath );
+
+    await FileSystem.copyAsync( {
+        from: cachedFile,
+        to: uniqueFilePath
+    } );
+
+    return uniqueFilePath;
+}
+  const __takePicture = async() => {
+    let options = {
+      quality: 1,
+      base64: true,
+      exif: false,
+    }
+    let newPhoto = await cameraRef.current.takePictureAsync(options)
+    setPhoto(newPhoto)
+    // const photo = await camera.takePictureAsync()
+    console.log('i am photo state', newPhoto.uri) // newPhoto.base64 is the actual image file
+    const source = newPhoto.base64
+    if(source){
+      await cameraRef.current.pausePreview();
+      setIsPreview(true)
+
+      let base64Img = `data:image/jpg;base64,${source}`;
+      let data = {
+        file: base64Img,
+        uploadPreset: 'preset',
+      }
+      persistCachedFile(newPhoto.uri, 'CamApp', 'image')
+    }
+    // This is done with persistCachedFile
+    // FileSystem.copyAsync({
+    //   from: newPhoto.uri,
+    //   to: FileSystem.documentDirectory
+    // })
+  }
+
 
   return (
     <View style={styles.container}>
       {
-        startCamera ? (
+        hasPermission ? (
           <Camera 
           style={{flex: 1, width: '100%'}}
-          ref = {(r) => {
-            camera = r
-          }}
+          // ref = {(r) => {
+          //   camera = r
+          // }}
+          ref={cameraRef}
+          type={cameraType}
+          onCameraReady={onCameraReady}
           >
             <View 
               style={{
                 position: 'absolute',
-                bottom: 0,
+                bottom: 25,
                 flexDirection: 'row',
-                flex: 1,
+                // flex: 1,
                 width: '100%',
                 padding: 20,
                 justifyContent: 'space-between',
+                alignItems: 'center',
               }}
             >
-              <View
+              {/* <View
                 style={{
                   alignSelf: 'center',
                   flex: 1,
                   alignItems: 'center',
                 }}
-              >
+              > */}
                 <TouchableOpacity 
-                  onPress={()=> {setStartCamera(!startCamera)}}
+                  onPress={()=> {setHasPermission(!hasPermission)}}
                   style={{
                     width: 100,
                     height: 20,
@@ -73,8 +154,14 @@ export default function App() {
                     backgroundColor: '#fff'
                   }}
                 />
+                <TouchableOpacity
+                // disabled={!isCameraReady}
+                onPress={switchCamera}
+                >
+                  <MaterialIcons name='flip-camera-ios' size={28} color='white' />
+                </TouchableOpacity>
               </View>
-            </View>
+            {/* </View> */}
           </Camera>
         ) : (
         <View style={{

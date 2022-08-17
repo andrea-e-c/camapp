@@ -6,13 +6,25 @@ import { Alert } from 'react-native-web';
 import * as FileSystem from 'expo-file-system';
 import { getInfoAsync, makeDirectoryAsync } from 'expo-file-system';
 import { AntDesign, MaterialIcons } from '@expo/vector-icons';
-// import CamAppRouter from './CamAppRouter';
+import { getDownloadURL, getStorage, ref, uploadBytesResumable, uploadString} from 'firebase/storage';
+import { initializeApp } from 'firebase/app'
 
-// let camera;
+const firebaseConfig = {
+  apiKey: "AIzaSyAcalvqz3YzTEe0tp6_22zDzTi70cVHzAA",
+  authDomain: "camapp-1b8b9.firebaseapp.com",
+  projectId: "camapp-1b8b9",
+  storageBucket: "camapp-1b8b9.appspot.com",
+  messagingSenderId: "223943785556",
+  appId: "1:223943785556:web:d82e4ee0cfc10679dac1c1",
+  measurementId: "G-YQF2B0GKC7"
+};
+initializeApp(firebaseConfig)
+const storage = getStorage()
 
 export default function App() {
   const [hasPermission, setHasPermission] = useState(false)
   const [photo, setPhoto] = useState();
+  const [photoCount, setPhotoCount] = useState(1)
   const [cameraType, setCameraType] = useState(CameraType.back)
   const [isPreview, setIsPreview] = useState(false)
   const [isCameraReady, setIsCameraReady] = useState(false)
@@ -20,13 +32,14 @@ export default function App() {
   const cameraRef = useRef();
 
   useEffect(() => {
-    onHandlePermission()
+    // Query the storage for the user to check how many images are in their folder
+    // Set the photo count to length
   }, [])
 
-  const onHandlePermission = async () => {
-    const { status } = await Camera.requestCameraPermissionsAsync();
-    setHasPermission(status === 'granted');
-  }
+  useEffect(() => {
+    // If the firebase photo album has 10 image (photoCount = 10), trigger purchaseImages
+    // Create new folder? Migrate images to archived?
+  }, [photoCount])
 
   const onCameraReady = () => {
     setIsCameraReady(true)
@@ -68,9 +81,46 @@ export default function App() {
         from: cachedFile,
         to: uniqueFilePath
     } );
-
     return uniqueFilePath;
 }
+
+  const sendToFirebase = async (uri, user) => {
+    const blob = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.onload = function(){
+        resolve(xhr.response)
+      };
+      xhr.onerror = function(){
+        reject(new TypeError('Network request failed'))
+      }
+      xhr.responseType = 'blob';
+      xhr.open('GET', uri, true);
+      xhr.send(null);
+    })
+
+    const storageRef = ref(storage, `users/${user.id}/image-`+ String(photoCount));
+    const uploadTask = uploadBytesResumable(storageRef, blob);
+
+    uploadTask.on('state_changed', (snapshot) => {
+      const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+      console.log('Upload is ' + progress + '% done');
+      switch (snapshot.state) {
+        case 'paused':
+          console.log('Upload paused');
+          break;
+        case 'running':
+          console.log('Upload is running');
+          break;
+      }
+    }, (error) => {
+      console.error(error)
+    }, () => {
+      getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+        console.log('File available at ', downloadURL)
+      })
+    })
+  }
+
   const __takePicture = async() => {
     let options = {
       quality: 1,
@@ -79,25 +129,14 @@ export default function App() {
     }
     let newPhoto = await cameraRef.current.takePictureAsync(options)
     setPhoto(newPhoto)
-    // const photo = await camera.takePictureAsync()
-    console.log('i am photo state', newPhoto.uri) // newPhoto.base64 is the actual image file
-    const source = newPhoto.base64
-    if(source){
-      await cameraRef.current.pausePreview();
-      setIsPreview(true)
-
-      let base64Img = `data:image/jpg;base64,${source}`;
-      let data = {
-        file: base64Img,
-        uploadPreset: 'preset',
-      }
-      persistCachedFile(newPhoto.uri, 'CamApp', 'image')
+    if(newPhoto){
+      // await cameraRef.current.pausePreview();
+      // setIsPreview(true)
+      // persistCachedFile(newPhoto.uri, 'CamApp', 'image')
+      sendToFirebase(newPhoto.uri, {username: 'andrea', id: 1})
+      setPhotoCount(photoCount + 1)
+      cancelPreview()
     }
-    // This is done with persistCachedFile
-    // FileSystem.copyAsync({
-    //   from: newPhoto.uri,
-    //   to: FileSystem.documentDirectory
-    // })
   }
 
 
@@ -107,9 +146,6 @@ export default function App() {
         hasPermission ? (
           <Camera 
           style={{flex: 1, width: '100%'}}
-          // ref = {(r) => {
-          //   camera = r
-          // }}
           ref={cameraRef}
           type={cameraType}
           onCameraReady={onCameraReady}

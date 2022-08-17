@@ -1,6 +1,8 @@
 import { initializeApp } from 'firebase/app'
 import { getDatabase } from 'firebase/database'
 import { getAnalytics } from "firebase/analytics";
+import { getStorage } from "firebase/storage"
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
     apiKey: "AIzaSyAcalvqz3YzTEe0tp6_22zDzTi70cVHzAA",
@@ -12,6 +14,8 @@ const firebaseConfig = {
     measurementId: "G-YQF2B0GKC7"
   };
 
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-  const database = getDatabase(app)
+  export const app = initializeApp(firebaseConfig);
+  export const analytics = getAnalytics(app);
+  export const database = getDatabase(app);
+  export const storage = getStorage(app);
+  export const firestore = getFirestore(app)

@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "camapp-1b8b9"
-  }
+    "default": "camapp-1b8b9",
+    "testing": "camapp-1b8b9"
+  },
+  "targets": {},
+  "etags": {}
 }

@@ -4,7 +4,7 @@ import { Input, NativeBaseProvider, Button, Icon, Box, Image, AspectRatio } from
 import { FontAwesome5 } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { TouchableOpacity } from "react-native";
-import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { firebaseAuth} from "../firebase/firebase";
 
 const Login = () => {
@@ -33,7 +33,7 @@ const Login = () => {
         if(auth.currentUser){
             navigation.navigate('Home')
         } 
-    })
+    }, [])
 
     return (
         <View style={styles.container}>

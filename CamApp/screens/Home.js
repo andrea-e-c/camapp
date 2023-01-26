@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Text, Image } from 'react-native';
 import React, {useEffect, useRef, useState} from 'react';
 import { Camera, CameraType } from 'expo-camera';
 import { Alert } from 'react-native-web';
@@ -10,28 +10,9 @@ import { getDownloadURL, ref, uploadBytesResumable, listAll} from 'firebase/stor
 import { NativeBaseProvider } from "native-base"
 import { firebaseApp, firebaseAuth, firebaseStorage } from '../firebase/firebase';
 import PrintPhotosPrompt from './PrintPhotosPrompt';
+import { useNavigation } from "@react-navigation/native";
+import Overlay from "../assets/filmoverlay.png"
 
-// const photoFolderRef = ref(storage, `users/${user.id}`)
-const photoFolderRef = ref(firebaseStorage, `users/1`)
-const auth = firebaseAuth
-/*
-Auth object structure:
-{
-  apiKey: 'string',
-  appName: 'string',
-  authDomain: 'string',
-  currentUser: {
-    displayName: 'string',
-    email: 'string',
-    emailVerified: boolean,
-    isAnonymous: boolean,
-    lastLoginAt: timeStamp?,
-    phoneNumber: string,
-    photoUrl: idk,
-    uid: string --> this is the important one
-  }
-}
-*/
 
 function Home() {
   const [hasPermission, setHasPermission] = useState(false)
@@ -43,10 +24,14 @@ function Home() {
   const [modalVisible, setModalVisible] = useState(false)
 
   const cameraRef = useRef();
+  const navigation = useNavigation()
+  const storage = firebaseStorage
+  const auth = firebaseAuth
+  const user = auth.currentUser
+
+  const photoFolderRef = ref(storage, `users/${user.uid}`)
 
   useEffect(() => {
-    // Query the storage for the user to check how many images are in their folder
-    // Set the photo count to length
     listAll(photoFolderRef)
     .then((res) => {
       setPhotoCount(res.items.length)
@@ -54,9 +39,7 @@ function Home() {
   })
 
   useEffect(() => {
-    // If the firebase photo album has 10 image (photoCount = 10), trigger purchaseImages
-    // Create new folder? Migrate images to archived?
-    if(photoCount >= 5){
+    if(photoCount >= 10){
       setModalVisible(true)
     }
   }, [photoCount])
@@ -84,25 +67,25 @@ function Home() {
     }
   }
 
-  const checkDirectoryExists = async (directory) => {
-    const directoryInfo = await getInfoAsync(directory);
-    if(!directoryInfo){
-      await makeDirectoryAsync(directory, { intermediates: true})
-    }
-  }
+//   const checkDirectoryExists = async (directory) => {
+//     const directoryInfo = await getInfoAsync(directory);
+//     if(!directoryInfo){
+//       await makeDirectoryAsync(directory, { intermediates: true})
+//     }
+//   }
 
-  const persistCachedFile = async( cachedFile, permanentFolder, fileId) => {
-    const permanentDirectoryPath = `${ FileSystem.documentDirectory }${ permanentFolder }/`
-    const uniqueFilePath = `${ permanentDirectoryPath }${ fileId }-${ Date.now() }`;
+//   const persistCachedFile = async( cachedFile, permanentFolder, fileId) => {
+//     const permanentDirectoryPath = `${ FileSystem.documentDirectory }${ permanentFolder }/`
+//     const uniqueFilePath = `${ permanentDirectoryPath }${ fileId }-${ Date.now() }`;
 
-    await checkDirectoryExists( permanentDirectoryPath );
+//     await checkDirectoryExists( permanentDirectoryPath );
 
-    await FileSystem.copyAsync( {
-        from: cachedFile,
-        to: uniqueFilePath
-    } );
-    return uniqueFilePath;
-}
+//     await FileSystem.copyAsync( {
+//         from: cachedFile,
+//         to: uniqueFilePath
+//     } );
+//     return uniqueFilePath;
+// }
 
   const sendToFirebase = async (uri, user) => {
     const blob = await new Promise((resolve, reject) => {
@@ -118,7 +101,7 @@ function Home() {
       xhr.send(null);
     })
 
-    const storageRef = ref(firebaseStorage, `users/${user.id}/image-`+ String(photoCount));
+    const storageRef = ref(firebaseStorage, `users/${user.uid}/image-`+ String(photoCount));
     const uploadTask = uploadBytesResumable(storageRef, blob);
 
     uploadTask.on('state_changed', (snapshot) => {
@@ -139,7 +122,6 @@ function Home() {
         console.log('File available at ', downloadURL)
       })
     })
-    // blob.close()
   }
 
   const __takePicture = async() => {
@@ -150,11 +132,26 @@ function Home() {
     }
     let newPhoto = await cameraRef.current.takePictureAsync(options)
     setPhoto(newPhoto)
-    if(newPhoto){
-      sendToFirebase(newPhoto.uri, {username: 'andrea', id: 1})
-      // setPhotoCount(photoCount + 1)
+    if(photo){
+      setIsPreview(true)
+      console.log(photo.uri)
+      // sendToFirebase(newPhoto.uri, user)
       cancelPreview()
     }
+  }
+
+  const checkout = () => {
+    navigation.navigate('PrintPhotosPage')
+  }
+  let savedPhoto = useRef(null)
+
+  if(isPreview){
+    return (
+        <View style={styles.middlePhoto} ref={savedPhoto}>
+          <Image source={Overlay} style={styles.filter}/>
+          <Image source={{uri: photo.uri}} style={{flex:1}} />
+        </View>
+    )
   }
 
 
@@ -205,7 +202,7 @@ function Home() {
                 >
                   <MaterialIcons name='flip-camera-ios' size={28} color='white' />
                 </TouchableOpacity>
-                <Text style={{fontSize: 40}}>{photoCount} photos</Text>
+                <Text style={{fontSize: 40}}>{10 - photoCount} remaining</Text>
               </View>
           </Camera>
         ) : (
@@ -216,6 +213,9 @@ function Home() {
             alignItems: 'center',
           }}
         >
+          {/* <View>
+            <PaymentScreen />
+          </View> */}
           <TouchableOpacity
               onPress={__startCamera}
               style={{
@@ -234,6 +234,26 @@ function Home() {
                 textAlign: 'center',
               }}> 
               Take Picture 
+              </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+              onPress={checkout}
+              style={{
+                  width: 130,
+                  borderRadius: 4,
+                  backgroundColor: '#14274e',
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: 40
+              }}
+              >
+              <Text style={{
+                color: '#fff',
+                fontWeight: 'bold',
+                textAlign: 'center',
+              }}> 
+              Checkout 
               </Text>
           </TouchableOpacity>
         </View>
@@ -261,4 +281,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  middlePhoto: {
+    flex: 1,
+    position: 'relative'
+  },
+  filter: {
+    opacity: 0.8,
+    position: "absolute",
+    top: 0,
+    left: 0,
+  }
 });

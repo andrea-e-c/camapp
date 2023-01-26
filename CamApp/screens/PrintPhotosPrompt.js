@@ -1,7 +1,10 @@
 import React from "react";
 import { Modal, Text, Pressable, View, StyleSheet } from 'react-native';
+import { useNavigation } from "@react-navigation/native";
 
 const PrintPhotosPrompt = ({modalVisible, setModalVisible}) => {
+    const navigation = useNavigation();
+
     return (
         <View>
             <Modal
@@ -21,7 +24,9 @@ const PrintPhotosPrompt = ({modalVisible, setModalVisible}) => {
                         </Pressable>
                         <Pressable
                         style={[styles.button, styles.buttonClose]}
-                        onPress={() => console.log('its printing time')}
+                        onPress={() => {
+                          navigation.navigate('PrintPhotosPage')
+                          console.log('its printing time')}}
                         >
                             <Text style={styles.textStyle}>YES!</Text>
                         </Pressable>

@@ -1,0 +1,35 @@
+{
+    "shippingMethod": "Budget",
+    "recipient": {
+        "name": "Mrs Andrelica Testing",
+        "address": {
+            "line1": "14 test place",
+            "line2": "test",
+            "postalOrZipCode": "12345",
+            "countryCode": "US",
+            "townOrCity": "somewhere",
+            "stateOrCounty": null
+        }
+    },
+    "items": [
+        {
+            "merchantReference": "Photo 4x6",
+            "sku": "GLOBAL-PHO-4x6",
+            "copies": 1,
+            "sizing": "fillPrintArea",
+                            "attributes": {
+                                    "finish": "gloss"
+                                },
+            "assets": [
+                {
+                    "printArea": "default",
+                    "url": "https://firebasestorage.googleapis.com/v0/b/camapp-1b8b9.appspot.com/o/users%2F1%2Fimage-2?alt=media&token=5685e5d3-87e4-4b5a-8905-25179301b741"
+                },
+                                  {
+                    "printArea": "default",
+                    "url": "https://firebasestorage.googleapis.com/v0/b/camapp-1b8b9.appspot.com/o/users%2F1%2Fimage-3?alt=media&token=6c2a6411-ddec-4725-b208-d04f25be3d13"
+                }
+            ]
+        }
+    ]
+}
